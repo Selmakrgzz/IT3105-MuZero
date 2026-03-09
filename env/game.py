@@ -8,8 +8,8 @@ import sys
 pygame.init()
 
 # Screen
-SCREEN_WIDTH = 600
-SCREEN_HEIGHT = 400
+SCREEN_WIDTH = 300
+SCREEN_HEIGHT = 300
 
 # Grid settings
 CELL_SIZE = 30
@@ -24,7 +24,7 @@ BLACK = (0,0,0)
 BACKGROUND_COLOR = (135,206,235)
 
 # Basket settings (in grid cells)
-BASKET_WIDTH = 4
+BASKET_WIDTH = 3
 BASKET_HEIGHT = 1
 
 # Ball
