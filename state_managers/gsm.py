@@ -1,4 +1,4 @@
-from vgs import VideoGameSimulator, LEFT, STAY, RIGHT, ACTIONS, GRID_WIDTH, BASKET_WIDTH, BASKET_Y
+from env.vgs import VideoGameSimulator, LEFT, STAY, RIGHT, ACTIONS, GRID_WIDTH, BASKET_WIDTH, BASKET_Y
 
 class GameStateManager:
     """
