@@ -47,12 +47,7 @@ class GameStateManager:
         Basket can't move left if already at the left wall and vice versa.
         """
         ball_x, ball_y, basket_x = state
-        legal = [STAY]
-        if basket_x > 0:
-            legal.append(LEFT)
-        if basket_x < GRID_WIDTH - BASKET_WIDTH:
-            legal.append(RIGHT)
-        return legal
+        return self._sim.get_legal_actions(basket_x)
 
     def is_terminal(self, state):
         """

@@ -72,12 +72,12 @@ class VideoGameSimulator:
 
         return self.get_state(), reward, done
 
-    def get_legal_actions(self):
+    def get_legal_actions(self, basket_x):
         """Actions that are valid right now (Used by the MCTS to build the tree 0_0)"""
         legal = [STAY]
-        if self.basket_x > 0:
+        if basket_x > 0:
             legal.append(LEFT)
-        if self.basket_x < GRID_WIDTH - BASKET_WIDTH:
+        if basket_x < GRID_WIDTH - BASKET_WIDTH:
             legal.append(RIGHT)
         return legal
 
