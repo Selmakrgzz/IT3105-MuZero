@@ -23,7 +23,7 @@ GRID_SIZE = 20         # pixels between grid lines
 GRID_THICKNESS = 1     # line thickness
 
 # Ball settings
-BALL_RADIUS = 15
+BALL_RADIUS = 5
 BALL_FALL_SPEED = 5
 
 # Basket settings
