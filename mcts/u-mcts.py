@@ -1,4 +1,5 @@
 import math
+import random
 
 C = 1.4  # explorasion rate
 
@@ -46,3 +47,22 @@ class MCTSNode:
         while not node.is_leaf():
             node = max(node.children, key=lambda child: child.ucb1(node)) # find the child with highest UCB1 score
         return node
+
+    def rollout(self, gsm, depth=5):
+        """
+        Simulate the game by the number of times in depth from this node and summarize rewards.
+        Return total accumulated rewards.
+        """
+        state  = self.state
+        total  = 0.0
+
+        for step in range(depth):
+            actions = gsm.get_legal_actions(state)
+            action  = random.choice(actions) # random action for now
+            state, reward = gsm.get_next_state_and_reward(state, action)
+            total += reward
+
+        # add herustic value of the end state
+        total += gsm.evaluate_state(state)
+        return total
+    
