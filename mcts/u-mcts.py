@@ -1,3 +1,7 @@
+import math
+
+C = 1.4  # explorasion rate
+
 class MCTSNode:
     def __init__(self, state, parent=None, action=None):
         self.state    = state
@@ -27,3 +31,18 @@ class MCTSNode:
             )
             self.children.append(child)
 
+    def ucb1(self, parent):
+        """Calculate the UCB1 score for this node"""
+        if self.visits == 0:
+            return float('inf')  # prioritize unvisited nodes
+        return self.q_value + C * math.sqrt(math.log(parent.visits) / self.visits)
+
+    def select(self):
+        """
+        Travel downwards the tree and pick the best child all the way
+        until we find a leaf node. Return the leaf node.
+        """
+        node = self
+        while not node.is_leaf():
+            node = max(node.children, key=lambda child: child.ucb1(node)) # find the child with highest UCB1 score
+        return node
