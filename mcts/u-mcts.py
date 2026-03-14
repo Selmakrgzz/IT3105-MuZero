@@ -77,3 +77,43 @@ class MCTSNode:
             node.q_value += (value - node.q_value) / node.visits
             node = node.parent
     
+class MCTS:
+    def __init__(self, gsm, num_searches=50, rollout_depth=5):
+        self.gsm = gsm
+        self.num_searches = num_searches
+        self.rollout_depth = rollout_depth
+
+    def search(self, root_state):
+        """
+        Run MCTS from a given state and return
+        the best action + policy + value
+        """
+        root = MCTSNode(root_state)
+        root.expand(self.gsm)
+
+        for step in range(self.num_searches):
+            # 1. SELECT - visit a leaf
+            leaf = root.select()
+
+            # 2. EXPAND - expand child if it hasen't been visited
+            if leaf.visits > 0:
+                leaf.expand(self.gsm)
+                leaf = random.choice(leaf.children)
+
+            # 3. ROLLOUT - estimate value
+            value = leaf.rollout(self.gsm, self.rollout_depth)
+
+            # 4. BACKPROP - send value back up
+            leaf.backprop(value)
+
+        # pick best action based on number of visitis after all searches
+        best_child = max(root.children, key=lambda c: c.visits)
+        
+        # policy
+        total_visits = sum(c.visits for c in root.children)
+        policy = {c.action: c.visits / total_visits for c in root.children} # how often did mcts choose each action
+        
+        # value of the root node
+        value = root.q_value
+
+        return best_child.action, policy, value
