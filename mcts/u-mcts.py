@@ -66,3 +66,14 @@ class MCTSNode:
         total += gsm.evaluate_state(state)
         return total
     
+    def backprop(self, value):
+        """
+        We'll have to send the value from rollout back to the root.
+        Update visits and q-value for each node on the path.
+        """
+        node = self
+        while node is not None:
+            node.visits  += 1
+            node.q_value += (value - node.q_value) / node.visits
+            node = node.parent
+    
