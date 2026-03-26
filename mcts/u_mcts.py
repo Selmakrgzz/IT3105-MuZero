@@ -19,17 +19,16 @@ class MCTSNode:
         """
         Add a child per legal action from this node.
         """
-        node = self
-        policy, _ = nnp.predict(node.state)
+        policy, _ = nnp.predict(self.state)
 
         for action in range(len(policy)):
-            next_abstract_state, reward = nnd.predict(node.state, action)
+            next_abstract_state, reward = nnd.predict(self.state, action)
             child = MCTSNode(
                 state   = next_abstract_state,
-                parent  = node,
+                parent  = self,
                 action  = action # the action that lead it here
             )
-            node.children.append(child)
+            self.children.append(child)
 
     def ucb1(self, parent):
         """Calculate the UCB1 score for this node"""
@@ -92,12 +91,11 @@ class MCTS:
         Run MCTS from a given state and return
         the best action + policy + value
         """
-        node = self
         abstract_state = nnr.represent(root_states)
         root = MCTSNode(abstract_state)
         root.expand(nnd, nnp)
 
-        for step in range(node.num_searches):
+        for step in range(self.num_searches):
             # 1. SELECT - visit a leaf
             leaf = root.select()
 
@@ -108,7 +106,7 @@ class MCTS:
                     leaf = random.choice(leaf.children)
 
             # 3. ROLLOUT - estimate value
-            accum_reward = leaf.rollout(node.rollout_depth, nnd, nnp)
+            accum_reward = leaf.rollout(self.rollout_depth, nnd, nnp)
 
             # 4. BACKPROP - send value back up
             leaf.backprop(accum_reward)
@@ -118,7 +116,7 @@ class MCTS:
         
         # policy
         total_visits = sum(child.visit_count for child in root.children)
-        policy = [0.0,0.0,0.0]
+        policy = [0.0, 0.0, 0.0]
         for child in root.children:
             policy[child.action] = child.visit_count / total_visits # how often did mcts choose each action
         

@@ -17,7 +17,7 @@ class EpisodeBuffer:
         Grab a chunk from an episode for training.
         episode_idx: which episode
         start: which step we start from
-        length: how many steps (w = roll-ahead)
+        length: how many steps 
         """
         episode = self.episodes[episode_idx]
         return episode[start : start + length]
