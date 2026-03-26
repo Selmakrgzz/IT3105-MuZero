@@ -29,7 +29,6 @@ class DynamicsNetwork(nn.Module):
         if action.dim() == 1:
             action = F.one_hot(action.long(), num_classes=self.action_size).float()
         #action_onehot = F.one_hot(action.long(), num_classes=self.action_size).float()
-        print("a ", action.dim(), "l ", latent.dim())
         x = torch.cat([latent, action], dim=-1)
         #x = torch.cat([latent, action], dim=-1)
         
@@ -43,14 +42,11 @@ class DynamicsNetwork(nn.Module):
     def predict(self, latent, action_id):
         if not torch.is_tensor(latent):
             latent = torch.tensor(latent, dtype=torch.float32).unsqueeze(0)
+        if latent.dim() == 1:
+            latent = latent.unsqueeze(0)
 
-        action_onehot = F.one_hot(
-            torch.tensor([action_id]), 
-            num_classes=self.action_size
-        ).float()
+        next_latent, reward = self.forward(latent, torch.tensor([action_id]))
 
-        next_latent, reward = self.forward(latent, action_onehot)
-
-        return next_latent.squeeze(0).detach().numpy(), reward.item()
+        return next_latent.squeeze(0).detach(), reward.item()  # returner tensor, ikke numpy
 
         

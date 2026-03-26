@@ -35,7 +35,7 @@ class RepresentationNetwork(nn.Module):
         return z
     
     
-    def predict(self, state_tensor):
+    def represent(self, state_tensor):
             """Wrapper for MCTS"""
             return self.forward(state_tensor)
 

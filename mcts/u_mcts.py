@@ -1,5 +1,6 @@
 import math
 import random
+import torch
 
 class MCTSNode:
     def __init__(self, state, parent=None, action=None, reward=0.0):
@@ -15,20 +16,24 @@ class MCTSNode:
         """A leaf node has no childeren yet"""
         return len(self.children) == 0
     
-    def expand(self, nnp, nnd):
+    def expand(self, nnd, nnp):
         """
         Add a child per legal action from this node.
         """
-        policy, _ = nnp.predict(self.state)
+        node = self
+
+        #print(f"NODE STATE{node.state}")
+        policy, _ = nnp.predict(node.state)
 
         for action in range(len(policy)):
-            next_abstract_state, reward = nnd.predict(self.state, action)
+            next_abstract_state, reward = nnd.predict(node.state, action)
+            
             child = MCTSNode(
                 state   = next_abstract_state,
-                parent  = self,
+                parent  = node,
                 action  = action # the action that lead it here
             )
-            self.children.append(child)
+            node.children.append(child)
 
     def ucb1(self, parent):
         """Calculate the UCB1 score for this node"""
@@ -55,12 +60,18 @@ class MCTSNode:
         Return total accumulated rewards.
         """
         state = self.state
+
+        if not torch.is_tensor(state):
+            state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
+    
         accum_reward = []
 
         for d in range(depth): 
             policy, _ = nnp.predict(state)
             action = random.choices(range(len(policy)), weights=policy, k=1)[0]
             state, reward = nnd.predict(state, action)
+            if not torch.is_tensor(state):
+                state = torch.tensor(state, dtype=torch.float32).unsqueeze(0)
             accum_reward.append(reward)
 
         # value of the end state
@@ -82,7 +93,7 @@ class MCTSNode:
             node.parent.backprop(rewards)
         
 class MCTS:
-    def __init__(self, num_searches, rollout_depth):
+    def __init__(self, num_searches=50, rollout_depth=5):
         self.num_searches = num_searches
         self.rollout_depth = rollout_depth
 
@@ -91,11 +102,13 @@ class MCTS:
         Run MCTS from a given state and return
         the best action + policy + value
         """
-        abstract_state = nnr.represent(root_states)
+        node = self
+        root_tensor = torch.tensor(root_states, dtype=torch.float32)  # [history_len, state_dim]
+        abstract_state = nnr.represent(root_tensor)
         root = MCTSNode(abstract_state)
         root.expand(nnd, nnp)
 
-        for step in range(self.num_searches):
+        for step in range(node.num_searches):
             # 1. SELECT - visit a leaf
             leaf = root.select()
 
@@ -106,7 +119,7 @@ class MCTS:
                     leaf = random.choice(leaf.children)
 
             # 3. ROLLOUT - estimate value
-            accum_reward = leaf.rollout(self.rollout_depth, nnd, nnp)
+            accum_reward = leaf.rollout(node.rollout_depth, nnd, nnp)
 
             # 4. BACKPROP - send value back up
             leaf.backprop(accum_reward)
@@ -116,7 +129,7 @@ class MCTS:
         
         # policy
         total_visits = sum(child.visit_count for child in root.children)
-        policy = [0.0, 0.0, 0.0]
+        policy = [0.0,0.0,0.0]
         for child in root.children:
             policy[child.action] = child.visit_count / total_visits # how often did mcts choose each action
         

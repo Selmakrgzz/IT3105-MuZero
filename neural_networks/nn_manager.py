@@ -93,11 +93,15 @@ class NeuralNetworkManager(nn.Module):
         target_value = batch["target_value"].float()
         target_reward = batch["target_reward"].float()
 
-        log_probs = F.log_softmax(pred["policy_logits"], dim=-1)
+        policies = torch.stack(pred["policies"])        # [W+1, B, action_size]
+        values   = torch.stack(pred["values"])          # [W+1, B]
+        rewards  = torch.stack(pred["rewards"])         # [W, B]
+
+        log_probs   = F.log_softmax(policies[0], dim=-1)
         policy_loss = -(target_policy * log_probs).sum(dim=-1).mean()
 
-        value_loss = F.mse_loss(pred["values"], target_value)
-        reward_loss = F.mse_loss(pred["rewards"], target_reward)
+        value_loss  = F.mse_loss(values[0], target_value)
+        reward_loss = F.mse_loss(rewards[0], target_reward)
 
         total_loss = policy_loss + value_loss + reward_loss
 
@@ -140,3 +144,41 @@ class NeuralNetworkManager(nn.Module):
 
     def get_nn(self):
         return self.dynamics, self.representation, self.prediction
+    
+    def train_on_buffer(self, episode_buffer, num_batches=30, chunk_length=10):
+        HISTORY_LEN = 4  # Q+1, må matche main.py
+        blank = (0, 0, 0)
+
+        for _ in range(num_batches):
+            chunk = episode_buffer.sample_random_chunk(chunk_length)
+            if len(chunk) < 2:
+                continue
+
+            # chunk = liste av (state, value, policy, action, reward)
+            states_raw = [step[0] for step in chunk]
+            actions  = torch.tensor([step[3] for step in chunk[:-1]], dtype=torch.long)
+            rewards  = torch.tensor([step[4] for step in chunk[:-1]], dtype=torch.float32)
+            values   = torch.tensor([step[1] for step in chunk[:-1]], dtype=torch.float32)
+            policies = torch.tensor([step[2] for step in chunk[:-1]], dtype=torch.float32)
+
+            # Bygg [B, history_len, state_dim] med padding
+            state_stacks = []
+            for i in range(len(states_raw) - 1):
+                start = max(0, i + 1 - HISTORY_LEN)
+                hist = states_raw[start : i + 1]
+                if len(hist) < HISTORY_LEN:
+                    hist = [blank] * (HISTORY_LEN - len(hist)) + hist
+                state_stacks.append(hist)
+
+            states = torch.tensor(state_stacks, dtype=torch.float32)  # [B, history_len, state_dim]
+
+            batch = {
+                "states":        states,
+                "actions":       actions.unsqueeze(1),
+                "target_reward": rewards,
+                "target_value":  values,
+                "target_policy": policies,
+            }
+
+            metrics = self.train_step(batch)
+        print(f"    loss={metrics['total_loss']:.4f}")
