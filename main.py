@@ -3,10 +3,10 @@ from state_managers.gsm import GameStateManager
 from mcts.u_mcts import MCTS
 from rl.episode_buffer import EpisodeBuffer
 from rl.rl_manager import RLManager
-from neural_networks.nnr import NNr
-from neural_networks.nnd import NNd
-from neural_networks.nnp import NNp
-from neural_networks.nnm import NNM
+from neural_networks.representation_network import RepresentationNetwork
+from neural_networks.dynamics_network import DynamicsNetwork
+from neural_networks.prediction_network import PredictionNetwork
+from neural_networks.nn_manager import NeuralNetworkManager
 
 # --- Parametre ---
 NUM_EPISODES = 100
@@ -17,10 +17,10 @@ Q = 3   # look-back
 
 # --- Sett opp systemet ---
 gsm  = GameStateManager()
-nnr  = NNr()
-nnd  = NNd()
-nnp  = NNp()
-nnm  = NNM(nnr, nnd, nnp)
+nnr  = RepresentationNetwork()
+nnd  = DynamicsNetwork()
+nnp  = PredictionNetwork()
+nnm  = NeuralNetworkManager(nnr, nnd, nnp)
 mcts = MCTS(num_searches=NUM_SEARCHES, rollout_depth=ROLLOUT_DEPTH)
 eb   = EpisodeBuffer()
 rlm  = RLManager(gsm, mcts, eb, nnr, nnd, nnp, q=Q)
