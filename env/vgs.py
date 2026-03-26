@@ -1,4 +1,5 @@
 import random
+import torch
 
 # Actions
 LEFT = 0
@@ -34,7 +35,7 @@ class VideoGameSimulator:
 
     def get_state(self):
         """Current state as a tuple. This is what the neural networks will receive."""
-        return (self.ball_x, self.ball_y, self.basket_x)
+        return torch.tensor(self.ball_x, self.ball_y, self.basket_x)
 
     def step(self, action):
         """

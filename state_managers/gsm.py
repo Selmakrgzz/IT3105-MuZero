@@ -1,4 +1,5 @@
 from env.vgs import VideoGameSimulator, LEFT, STAY, RIGHT, ACTIONS, GRID_WIDTH, BASKET_WIDTH, BASKET_Y
+import torch
 
 class GameStateManager:
     """
@@ -28,7 +29,7 @@ class GameStateManager:
         Given any state and action, return (next_state, reward).
         Uses a cache so repeated MCTS queries are instant.
         """
-        key = (state, action)
+        key = torch.tensor(state, action)
         if key in self._cache:
             return self._cache[key]
 
@@ -38,7 +39,7 @@ class GameStateManager:
         temp.ball_x, temp.ball_y, temp.basket_x = state
         next_state, reward, _ = temp.step(action)
 
-        self._cache[key] = (next_state, reward)
+        self._cache[key] = torch.tensor(next_state, reward)
         return next_state, reward
 
     def get_legal_actions(self, state):
