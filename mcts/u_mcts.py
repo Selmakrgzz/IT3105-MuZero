@@ -1,13 +1,15 @@
 import math
 import random
 import torch
+import numpy as np
 
 class MCTSNode:
-    def __init__(self, state, parent=None, action=None, reward=0.0):
+    def __init__(self, state, parent=None, action=None, reward=0.0, prior=1.0):
         self.state = state
         self.parent = parent
         self.action = action
         self.reward = reward
+        self.prior = prior
         self.visit_count = 0
         self.q_value = 0.0
         self.children = []
@@ -19,30 +21,29 @@ class MCTSNode:
     def expand(self, nnd, nnp):
         """
         Add a child per legal action from this node.
+        Uses policy from nnp as prior for each child.
         """
         node = self
-
-        #print(f"NODE STATE{node.state}")
         policy, _ = nnp.predict(node.state)
 
         for action in range(len(policy)):
             next_abstract_state, reward = nnd.predict(node.state, action)
-            
             child = MCTSNode(
-                state   = next_abstract_state,
-                parent  = node,
-                action  = action # the action that lead it here
+                state  = next_abstract_state,
+                parent = node,
+                action = action,
+                prior  = policy[action]  # use network policy as prior
             )
             node.children.append(child)
 
     def ucb1(self, parent):
-        """Calculate the UCB1 score for this node"""
-        node = self
-        C = 1.4  # explorasion rate
-        
-        if node.visit_count == 0:
-            return float('inf')  # prioritize unvisited nodes
-        return node.q_value + C * math.sqrt(math.log(parent.visit_count) / node.visit_count)
+        """Calculate the UCB1 score using prior from policy network"""
+        C = 1.4
+        if self.visit_count == 0:
+            return float('inf') if self.prior > 0 else 1e6 * self.prior
+        exploitation = self.q_value
+        exploration = C * self.prior * math.sqrt(parent.visit_count) / (1 + self.visit_count)
+        return exploitation + exploration
 
     def select(self):
         """
@@ -51,7 +52,7 @@ class MCTSNode:
         """
         node = self
         while not node.is_leaf():
-            node = max(node.children, key=lambda child: child.ucb1(node)) # find the child with highest UCB1 score
+            node = max(node.children, key=lambda child: child.ucb1(node))
         return node
 
     def rollout(self, depth, nnd, nnp):
@@ -103,16 +104,23 @@ class MCTS:
         the best action + policy + value
         """
         node = self
-        root_tensor = torch.tensor(root_states, dtype=torch.float32)  # [history_len, state_dim]
+        root_tensor = torch.tensor(root_states, dtype=torch.float32)
         abstract_state = nnr.represent(root_tensor)
         root = MCTSNode(abstract_state)
         root.expand(nnd, nnp)
+
+        # --- Dirichlet noise for exploration at root ---
+        alpha = 0.3
+        epsilon = 0.25
+        noise = np.random.dirichlet([alpha] * len(root.children))
+        for i, child in enumerate(root.children):
+            child.prior = (1 - epsilon) * child.prior + epsilon * noise[i]
 
         for step in range(node.num_searches):
             # 1. SELECT - visit a leaf
             leaf = root.select()
 
-            # 2. EXPAND - expand child if it hasen't been visited
+            # 2. EXPAND - expand child if it has been visited
             if leaf.visit_count > 0:
                 leaf.expand(nnd, nnp)
                 if leaf.children:
@@ -124,14 +132,14 @@ class MCTS:
             # 4. BACKPROP - send value back up
             leaf.backprop(accum_reward)
 
-        # pick best action based on number of visitis after all searches
+        # pick best action based on number of visits after all searches
         best_child = max(root.children, key=lambda c: c.visit_count)
         
         # policy
         total_visits = sum(child.visit_count for child in root.children)
-        policy = [0.0,0.0,0.0]
+        policy = [0.0, 0.0, 0.0]
         for child in root.children:
-            policy[child.action] = child.visit_count / total_visits # how often did mcts choose each action
+            policy[child.action] = child.visit_count / total_visits
         
         # value of the root node
         value = root.q_value
