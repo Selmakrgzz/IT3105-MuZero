@@ -82,7 +82,7 @@ class MCTSNode:
             node.parent.backprop(rewards)
         
 class MCTS:
-    def __init__(self, num_searches=50, rollout_depth=5):
+    def __init__(self, num_searches, rollout_depth):
         self.num_searches = num_searches
         self.rollout_depth = rollout_depth
 
