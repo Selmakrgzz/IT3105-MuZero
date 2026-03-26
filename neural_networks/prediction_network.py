@@ -10,7 +10,7 @@ class PredictionNetwork(nn.Module):
             nn.Linear(latent_dim, hidden_dim),
             nn.ReLU(),
         )
-        #[2.1, 0.3, -1.0] after softmax probabilties
+        # [2.1, 0.3, -1.0] after softmax probabilties
         self.policy_head = nn.Linear(hidden_dim, action_size)
         # evaluate situation How good is this state
         self.value_head = nn.Linear(hidden_dim, 1)
@@ -23,6 +23,15 @@ class PredictionNetwork(nn.Module):
             value:         [B]
         """
         h = self.shared(latent)
-        policy_logits = self.policy_head(h)   # raw logits, no softmax here
+        policy_logits = self.policy_head(h)  # raw logits, no softmax here
         value = self.value_head(h).squeeze(-1)
         return policy_logits, value
+
+    def predict(self, latent):
+        logits, value = self.forward(latent)
+
+        policy = torch.softmax(logits, dim=-1)
+        policy = policy.squeeze(0).detach().cpu().numpy()
+        value = value.squeeze(0).item()
+
+        return policy, value
